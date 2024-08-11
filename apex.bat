@@ -2,55 +2,52 @@
 setlocal enabledelayedexpansion
 chcp 65001 > nul
 
-set /p "SteamApexPath=输入Steam版Apex的安装路径 (e.g., E:\Steam\steamapps\common\Apex Legends): "
-set /p "EAPath=输入EA App的安装路径 (e.g., E:\App\EA App): "
+:menu
+cls
+echo 请选择操作:
+echo 1. Steam 版本转 EA 版本
+echo 2. EA 版本转 Steam 版本
+echo 3. 退出
+set /p choice="选择操作 (1/2/3): "
 
-mklink /J "%EAPath%\Apex" "%SteamApexPath%"
+if "%choice%"=="1" goto steam_to_ea
+if "%choice%"=="2" goto ea_to_steam
+if "%choice%"=="3" goto end
 
-set "SteamBackup=%SteamApexPath%\ApexBackup\Steam"
-set "EABackup=%SteamApexPath%\ApexBackup\EA"
-if not exist "%SteamBackup%" mkdir "%SteamBackup%"
-if not exist "%EABackup%" mkdir "%EABackup%"
-
-:confirm_steam
-set /p "confirm=Steam版Apex是否可以正常启动? 按y继续: "
-if /i "%confirm%" neq "y" goto confirm_steam
-
-echo 正在备份Steam版文件...
-for %%F in (amd_ags_x64.dll binkawin64.dll installscript.vdf mileswin64.dll OriginSDK.dll r5apex.exe r5apex_dx12.exe) do (
-    if exist "%SteamApexPath%\%%F" robocopy "%SteamApexPath%" "%SteamBackup%" %%F /MOV > NUL 2>&1
-)
-if exist "%SteamApexPath%\bin" robocopy "%SteamApexPath%\bin" "%SteamBackup%\bin" /E /MOV > NUL 2>&1
-if exist "%SteamApexPath%\EasyAntiCheat" robocopy "%SteamApexPath%\EasyAntiCheat" "%SteamBackup%\EasyAntiCheat" /E /MOV > NUL 2>&1
-
-
-
-
-echo 添加环境变量 STEAM_APEX_PATH...
-echo 等待期间请在 EA App 点击下载 Apex 并修补
-setx STEAM_APEX_PATH "%SteamApexPath%"
-
-:confirm_ea
-set /p "confirm=EA版Apex是否可以正常启动? 按y继续: "
-if /i "%confirm%" neq "y" goto confirm_ea
-
-echo 正在备份EA版文件...
-for %%F in (amd_ags_x64.dll binkawin64.dll mileswin64.dll OriginSDK.dll r5apex.exe r5apex_dx12.exe) do (
-    if exist "%EAPath%\Apex\%%F" robocopy "%EAPath%\Apex" "%EABackup%" %%F /MOV > NUL 2>&1
-)
-if exist "%EAPath%\Apex\bin" robocopy "%EAPath%\Apex\bin" "%EABackup%\bin" /E /MOV > NUL 2>&1
-if exist "%EAPath%\Apex\EasyAntiCheat" robocopy "%EAPath%\Apex\EasyAntiCheat" "%EABackup%\EasyAntiCheat" /E /MOV > NUL 2>&1
-
-echo 创建切换到EA版的快捷方式...
-powershell -Command "$WshShell = New-Object -comObject WScript.Shell; $Shortcut = $WshShell.CreateShortcut('%~dp0SwitchToEA.lnk'); $Shortcut.TargetPath = '%%ComSpec%%'; $Shortcut.Arguments = '/c del \"%%STEAM_APEX_PATH%%\installscript.vdf\" & xcopy \"%%STEAM_APEX_PATH%%\ApexBackup\EA\*\" \"%%STEAM_APEX_PATH%%\" /E /I /Y & start \"\" \"%%STEAM_APEX_PATH%%\r5apex.exe\"'; $Shortcut.WorkingDirectory = '%%STEAM_APEX_PATH%%'; $Shortcut.Save()"
-
-echo 创建切换到Steam版的快捷方式...
-powershell -Command "$WshShell = New-Object -comObject WScript.Shell; $Shortcut = $WshShell.CreateShortcut('%~dp0SwitchToSteam.lnk'); $Shortcut.TargetPath = '%%ComSpec%%'; $Shortcut.Arguments = '/c xcopy \"%%STEAM_APEX_PATH%%\ApexBackup\Steam\*\" \"%%STEAM_APEX_PATH%%\" /E /I /Y & start \"\" \"%%STEAM_APEX_PATH%%\r5apex.exe\"'; $Shortcut.WorkingDirectory = '%%STEAM_APEX_PATH%%'; $Shortcut.Save()"
-
-
-echo 备份和快捷方式已创建完成。
-echo SwitchToEA.lnk - 切换到EA版本并启动
-echo SwitchToSteam.lnk - 切换到Steam版本并启动
-echo 双击对应的快捷方式即可切换并启动游戏。
-
+echo 没这个选项, 重输。
 pause
+goto menu
+
+:steam_to_ea
+set /p "SteamApexPath=输入 Steam Apex 的安装路径 (e.g., E:\Steam\steamapps\common\Apex Legends): "
+set /p "EAPath=输入 EA App 的安装路径 (e.g., E:\App\EA App): "
+
+if not exist "%EAPath%\Apex" (
+    mkdir "%EAPath%\Apex"
+)
+
+for %%i in ("paks" "audio" "media" "cfg" "bin" "Crashpad" "LiveAPI" "materials" "r2") do (
+    mklink /J "%EAPath%\Apex\%%i" "%SteamApexPath%\%%i" >NUL 2>NUL
+)
+
+echo 执行完成, 打开 EA App, 下载或修补 APEX, 直接运行即可
+goto end
+
+:ea_to_steam
+set /p "EAApexPath=输入 EA Apex 的安装路径 (e.g., E:\App\EA App\Apex): "
+set /p "SteamPath=输入 Steam 的库路径 (e.g., E:\Steam\steamapps\common): "
+
+if not exist "%SteamPath%\Apex Legends" (
+    mkdir "%SteamPath%\Apex Legends"
+)
+
+for %%i in ("paks" "audio" "media" "cfg" "bin" "Crashpad" "LiveAPI" "materials" "r2") do (
+    mklink /J "%SteamPath%\Apex Legends\%%i" "%EAApexPath%\%%i" >NUL 2>NUL
+)
+
+echo 执行完成, 打开 Steam, 下载或修补 APEX, 直接运行即可
+goto end
+
+:end
+pause
+endlocal
