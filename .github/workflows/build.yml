@@ -1,0 +1,42 @@
+name: Build
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install nuitka
+        pip install loguru
+
+    - name: Download Dependency Walker
+      run: |
+        $url = "https://dependencywalker.com/depends22_x64.zip"
+        $output = "depends22_x64.zip"
+        Invoke-WebRequest -Uri $url -OutFile $output
+        Expand-Archive -Path $output -DestinationPath "$env:USERPROFILE\depends"
+
+    - name: Build with Nuitka
+      env:
+        NUITKA_DEPENDENCY_WALKER: ${{ env.USERPROFILE }}\depends\depends.exe
+      run: |
+        python -m nuitka --onefile --standalone --plugin-enable=tk-inter --assume-yes-for-downloads apex.py
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: apex-tool
+        path: apex.exe
